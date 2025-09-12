@@ -1,0 +1,89 @@
+{
+  "project_structure": {
+    "description": "AI Context Manager package structure and organization",
+    "directories": {
+      "ai_context_manager/": "Core package code",
+      "templates/": "Project-specific templates",
+      "tests/": "Test suite",
+      "examples/": "Usage examples",
+      "docs/": "Documentation"
+    },
+    "key_files": {
+      "setup.py": "Package installation configuration",
+      "pyproject.toml": "Modern Python packaging",
+      "README.md": "Project documentation",
+      "cli.py": "Command-line interface",
+      "core.py": "Core functionality",
+      "generator.py": "Project template generation",
+      "maintainer.py": "Maintenance and optimization",
+      "versioner.py": "Version control",
+      "learner.py": "Pattern learning"
+    },
+    "dependencies": {
+      "required": [
+        "pyyaml",
+        "click"
+      ],
+      "optional": [
+        "pytest",
+        "black",
+        "ruff"
+      ],
+      "development": [
+        "setuptools",
+        "wheel",
+        "twine"
+      ]
+    }
+  },
+  "development_workflow": {
+    "setup": [
+      "Clone repository",
+      "Install in development mode: pip install -e .",
+      "Set up pre-commit hooks",
+      "Initialize AI context: ai-context init 'AI Context Manager' --type python_package"
+    ],
+    "testing": [
+      "Run unit tests: pytest",
+      "Test CLI commands",
+      "Test with different project types",
+      "Validate self-hosting functionality"
+    ],
+    "deployment": [
+      "Update version in setup.py and pyproject.toml",
+      "Run tests and linting",
+      "Build package: python -m build",
+      "Publish to PyPI: twine upload dist/*"
+    ],
+    "maintenance": [
+      "Use ai-context maintain for automated maintenance",
+      "Review and update templates",
+      "Analyze usage patterns with ai-context learn",
+      "Update documentation based on user feedback"
+    ]
+  },
+  "technical_architecture": {
+    "components": [
+      "CLI Interface - Command-line entry point",
+      "Core Manager - Main functionality coordination",
+      "Generator - Project template creation",
+      "Maintainer - Automated maintenance",
+      "Versioner - Change tracking",
+      "Learner - Pattern analysis"
+    ],
+    "data_flow": [
+      "User runs CLI command",
+      "CLI parses arguments and calls appropriate module",
+      "Core functionality processes request",
+      "Results written to context files",
+      "Version control tracks changes",
+      "Learning system analyzes patterns"
+    ],
+    "external_dependencies": [
+      "PyYAML for configuration files",
+      "Click for CLI interface",
+      "Git for version control integration",
+      "File system for context file management"
+    ]
+  }
+}

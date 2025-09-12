@@ -1,0 +1,61 @@
+{
+  "ai_context": {
+    "critical_read_first": true,
+    "file_purpose": "Essential context for AI assistants working on AI Context Manager development",
+    "last_updated": "2025-09-11",
+    "project_name": "AI Context Manager",
+    "project_type": "python_package",
+    "self_hosted": true,
+    "meta_context": "This AI context system is used to develop itself - ultimate dogfooding"
+  },
+  "project": {
+    "name": "AI Context Manager",
+    "type": "python_package",
+    "description": "Intelligent AI context management system for any project",
+    "tech_stack": [
+      "Python",
+      "Click",
+      "PyYAML",
+      "setuptools"
+    ],
+    "entry_points": [
+      "ai_context_manager/cli.py",
+      "ai_context_manager/core.py",
+      "ai_context_manager/generator.py"
+    ],
+    "key_features": [
+      "Persistent AI context management",
+      "Automated maintenance and optimization",
+      "Version control for context changes",
+      "Pattern learning and recognition",
+      "Multi-project support",
+      "CLI interface for easy adoption"
+    ],
+    "target_users": [
+      "Software developers using AI assistants",
+      "DevOps engineers",
+      "Data scientists",
+      "Researchers",
+      "Technical writers"
+    ]
+  },
+  "ai_assistant_rules": {
+    "mandatory_context_usage": "CRITICAL: Always read ALL ai_context files when working on AI Context Manager",
+    "mandatory_frequent_context_review": [
+      "CRITICAL: Review ai_context every 30 minutes during development",
+      "This system is developing itself - use its own context for guidance"
+    ],
+    "self_hosting_rules": [
+      "Always use the AI Context Manager's own context when developing it",
+      "Test new features by using them on this project first",
+      "Document learnings in this context system",
+      "Validate that the system works by using it on itself"
+    ],
+    "development_specific_rules": [
+      "Follow Python packaging best practices",
+      "Maintain backward compatibility with existing systems",
+      "Ensure CLI interface is intuitive and well-documented",
+      "Test with multiple project types before releasing"
+    ]
+  }
+}
