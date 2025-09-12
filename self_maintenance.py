@@ -45,10 +45,7 @@ def maintain_self_context():
         last_version = (
             version_history["versions"][-1] if version_history["versions"] else {}
         )
-        if (
-            file_path.name not in last_version.get("file_hashes", {})
-            or last_version["file_hashes"][file_path.name] != current_hash
-        ):
+        if file_path.name not in last_version.get("file_hashes", {}) or last_version["file_hashes"][file_path.name] != current_hash:
             changes_detected = True
 
     # Create new version if changes detected
