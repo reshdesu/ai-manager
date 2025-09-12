@@ -15,7 +15,7 @@ def create_self_hosted_context():
     print("Creating self-hosted AI context for AI Context Manager development...")
 
     # Create context directory for the AI context manager
-    context_dir = Path("ai-context-manager/ai_context_self")
+    context_dir = Path("ai_context_self")
     context_dir.mkdir(exist_ok=True)
 
     # 1. Create core.json for the AI context manager project

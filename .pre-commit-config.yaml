@@ -1,0 +1,82 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.4.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-added-large-files
+      - id: check-merge-conflict
+      - id: check-json
+      - id: check-toml
+      - id: check-xml
+      - id: debug-statements
+      - id: check-ast
+      - id: check-merge-conflict
+      - id: check-docstring-first
+
+  - repo: https://github.com/psf/black
+    rev: 23.7.0
+    hooks:
+      - id: black
+        language_version: python3
+
+  - repo: https://github.com/charliermarsh/ruff-pre-commit
+    rev: v0.13.0
+    hooks:
+      - id: ruff
+        args: [--fix, --exit-non-zero-on-fix]
+
+  - repo: https://github.com/pycqa/isort
+    rev: 5.12.0
+    hooks:
+      - id: isort
+        args: ["--profile", "black"]
+
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.5.1
+    hooks:
+      - id: mypy
+        additional_dependencies: [types-PyYAML, types-click]
+
+  - repo: https://github.com/asottile/pyupgrade
+    rev: v3.14.0
+    hooks:
+      - id: pyupgrade
+        args: [--py38-plus]
+
+  - repo: https://github.com/pycqa/flake8
+    rev: 6.0.0
+    hooks:
+      - id: flake8
+        additional_dependencies: [flake8-docstrings]
+
+  - repo: https://github.com/pycqa/bandit
+    rev: 1.7.5
+    hooks:
+      - id: bandit
+        args: ['-r', '.', '-x', 'tests/']
+        exclude: ^tests/
+
+  - repo: https://github.com/Lucas-C/pre-commit-hooks-safety
+    rev: v1.3.2
+    hooks:
+      - id: python-safety-dependencies-check
+
+  - repo: local
+    hooks:
+      - id: ai-context-check
+        name: AI Context Check
+        entry: python scripts/check_ai_context.py
+        language: system
+        types: [python]
+        pass_filenames: false
+        description: Ensure AI Context Manager is properly configured
+
+      - id: self-hosting-validation
+        name: Self-Hosting Validation
+        entry: python scripts/validate_self_hosting.py
+        language: system
+        types: [python]
+        pass_filenames: false
+        description: Validate self-hosting functionality

@@ -15,7 +15,7 @@ def maintain_self_context():
 
     print(" AI Context Manager maintaining itself...")
 
-    context_dir = Path("ai-context-manager/ai_context_self")
+    context_dir = Path("ai_context_self")
 
     if not context_dir.exists():
         print(" Self-hosted context not found. Run self_hosted_ai_context.py first.")
@@ -45,9 +45,10 @@ def maintain_self_context():
         last_version = (
             version_history["versions"][-1] if version_history["versions"] else {}
         )
-        if file_path.name not in last_version.get("file_hashes", {}):
-            changes_detected = True
-        elif last_version["file_hashes"][file_path.name] != current_hash:
+        if (
+            file_path.name not in last_version.get("file_hashes", {})
+            or last_version["file_hashes"][file_path.name] != current_hash
+        ):
             changes_detected = True
 
     # Create new version if changes detected
