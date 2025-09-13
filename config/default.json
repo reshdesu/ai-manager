@@ -1,0 +1,60 @@
+{
+  "ai_context_manager": {
+    "version": "1.0.0",
+    "description": "Automated AI Context Manager Configuration",
+    "last_updated": "2025-09-13",
+    
+    "services": {
+      "backend_api": {
+        "enabled": true,
+        "port": 5000,
+        "script": "backend_api_service_simple.py",
+        "startup_delay": 0
+      },
+      "monitoring_website": {
+        "enabled": true,
+        "port": 8000,
+        "script": "monitoring_website.py",
+        "startup_delay": 3
+      },
+      "ai_context_manager_agent": {
+        "enabled": true,
+        "script": "ai_context_manager_agent.py",
+        "startup_delay": 3,
+        "requires_claude": true
+      },
+      "blaze_agent": {
+        "enabled": true,
+        "script": "blaze_agent.py",
+        "startup_delay": 3
+      },
+      "maya_agent": {
+        "enabled": true,
+        "script": "maya_agent.py",
+        "startup_delay": 3
+      }
+    },
+    
+    "claude": {
+      "auto_model_selection": true,
+      "preferred_model_type": "sonnet",
+      "cache_duration": 3600,
+      "fallback_model": "claude-3-haiku-20240307"
+    },
+    
+    "monitoring": {
+      "health_check_interval": 30,
+      "auto_restart_failed_services": true,
+      "log_level": "INFO"
+    },
+    
+    "environment": {
+      "auto_detect_api_key": true,
+      "api_key_sources": [
+        "environment_variable",
+        "bashrc",
+        "env_file"
+      ]
+    }
+  }
+}

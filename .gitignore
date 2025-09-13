@@ -1,3 +1,31 @@
+# Security and Sensitive Data
+*.key
+*.pem
+*.p12
+*.pfx
+.env
+.env.local
+.env.production
+.env.staging
+.env.development
+secrets.json
+credentials.json
+config/secrets.json
+config/credentials.json
+
+# API Keys and Tokens (common patterns)
+*api_key*
+*api-key*
+*token*
+*secret*
+*password*
+*credential*
+
+# Environment Variables
+.env*
+!.env.template
+!.env.example
+
 # Python
 __pycache__/
 *.py[cod]
@@ -16,26 +44,63 @@ parts/
 sdist/
 var/
 wheels/
+pip-wheel-metadata/
+share/python-wheels/
 *.egg-info/
 .installed.cfg
 *.egg
 MANIFEST
 
-# Virtual environments
+# Virtual Environments
 venv/
 env/
 ENV/
 env.bak/
 venv.bak/
+.venv/
 
-# IDE
+# IDE and Editor files
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
+.DS_Store
+Thumbs.db
 
-# OS
+# Logs
+*.log
+logs/
+log/
+api_server.log
+*.log.*
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.temp
+working_*
+simple_*
+test_*
+temp_*
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Backup files
+*backup*
+*backup_*
+ai_context_backup_*/
+
+# Cache directories
+.cache/
+cache/
+data/cache/
+
+# OS generated files
 .DS_Store
 .DS_Store?
 ._*
@@ -44,17 +109,59 @@ venv.bak/
 ehthumbs.db
 Thumbs.db
 
-# Logs
-*.log
-logs/
+# Project specific
+ai_manager.egg-info/
+ai_context_manager.egg-info/
+*.egg-info/
 
-# Temporary files
-*.tmp
-*.temp
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
 
-# AI Context files (these should be created by users, not tracked)
-ai_context/
-.ai-context.yaml
+# Coverage reports
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
 
-# Self-hosted context (keep this for development)
-!ai_context_self/
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# pyenv
+.python-version
+
+# pipenv
+Pipfile.lock
+
+# PEP 582
+__pypackages__/
+
+# Celery
+celerybeat-schedule
+celerybeat.pid
+
+# SageMath parsed files
+*.sage.py
+
+# Spyder project settings
+.spyderproject
+.spyproject
+
+# Rope project settings
+.ropeproject
+
+# mkdocs documentation
+/site
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre type checker
+.pyre/

@@ -1,0 +1,21 @@
+[Unit]
+Description=AI Context Manager System
+After=network.target
+Wants=network.target
+
+[Service]
+Type=simple
+User=yamnik
+Group=yamnik
+WorkingDirectory=/home/yamnik/Projects/ai-context-manager
+ExecStart=/home/yamnik/Projects/ai-context-manager/start.sh
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+# Environment variables - Set these in your environment or use EnvironmentFile
+# Environment=ANTHROPIC_API_KEY=your-api-key-here
+
+[Install]
+WantedBy=multi-user.target

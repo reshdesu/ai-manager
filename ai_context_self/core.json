@@ -56,6 +56,12 @@
       "Maintain backward compatibility with existing systems",
       "Ensure CLI interface is intuitive and well-documented",
       "Test with multiple project types before releasing"
+    ],
+    "ui_design_rules": [
+      "NEVER use center alignment in any GUI or website interfaces",
+      "Always use left alignment for all text, elements, and layouts",
+      "Maintain consistent left-aligned design across all interfaces",
+      "Apply left alignment to headers, content, buttons, and all UI elements"
     ]
   }
 }
