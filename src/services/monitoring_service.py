@@ -60,6 +60,24 @@ class MonitoringWebsite:
                 logger.error(f"Failed to get communications from backend: {e}")
                 return jsonify({"error": "Backend unavailable"}), 503
                 
+        @self.app.route('/api/pulse')
+        def get_pulse_updates():
+            try:
+                response = requests.get(f"{self.backend_url}/api/pulse", timeout=5)
+                return jsonify(response.json())
+            except Exception as e:
+                logger.error(f"Failed to get pulse updates from backend: {e}")
+                return jsonify({"error": "Backend unavailable"}), 503
+                
+        @self.app.route('/api/agents/activity')
+        def get_agent_activity():
+            try:
+                response = requests.get(f"{self.backend_url}/api/agents/activity", timeout=5)
+                return jsonify(response.json())
+            except Exception as e:
+                logger.error(f"Failed to get agent activity from backend: {e}")
+                return jsonify({"error": "Backend unavailable"}), 503
+                
         # Claude interface endpoints
         @self.app.route('/api/claude/request', methods=['POST'])
         def claude_request():
@@ -446,10 +464,149 @@ class MonitoringWebsite:
             font-size: 10px;
         }
         .sidebar-agent-status.online {
-            color: #ffffff;
+            color: #00ff00;
         }
         .sidebar-agent-status.offline {
             color: #ff0000;
+        }
+        .sidebar-agent-status.warning {
+            color: #ffff00;
+        }
+        
+        /* Agent Activity Indicators - Pulsing Left Border with Agent Colors */
+        .sidebar-agent.activity-idle { 
+            border-left: 4px solid #95a5a6 !important; 
+        }
+        
+        /* Maya Agent Colors (Teal) */
+        .sidebar-agent.maya-agent.activity-working { 
+            border-left: 4px solid #20b2aa !important; 
+            animation: pulse-maya-working 2s infinite; 
+        }
+        .sidebar-agent.maya-agent.activity-thinking { 
+            border-left: 4px solid #20b2aa !important; 
+            animation: pulse-maya-thinking 1.5s infinite; 
+        }
+        .sidebar-agent.maya-agent.activity-error { 
+            border-left: 4px solid #20b2aa !important; 
+            animation: pulse-maya-error 1s infinite; 
+        }
+        
+        /* Blaze Agent Colors (Orange) */
+        .sidebar-agent.blaze-agent.activity-working { 
+            border-left: 4px solid #ff6b35 !important; 
+            animation: pulse-blaze-working 2s infinite; 
+        }
+        .sidebar-agent.blaze-agent.activity-thinking { 
+            border-left: 4px solid #ff6b35 !important; 
+            animation: pulse-blaze-thinking 1.5s infinite; 
+        }
+        .sidebar-agent.blaze-agent.activity-error { 
+            border-left: 4px solid #ff6b35 !important; 
+            animation: pulse-blaze-error 1s infinite; 
+        }
+        
+        /* AI Manager Colors (Green) */
+        .sidebar-agent.ai-manager.activity-working { 
+            border-left: 4px solid #00ff00 !important; 
+            animation: pulse-manager-working 2s infinite; 
+        }
+        .sidebar-agent.ai-manager.activity-thinking { 
+            border-left: 4px solid #00ff00 !important; 
+            animation: pulse-manager-thinking 1.5s infinite; 
+        }
+        .sidebar-agent.ai-manager.activity-error { 
+            border-left: 4px solid #00ff00 !important; 
+            animation: pulse-manager-error 1s infinite; 
+        }
+        
+        /* Maya Agent Pulse Animations */
+        @keyframes pulse-maya-working {
+            0% { border-left-color: #20b2aa; opacity: 1; }
+            50% { border-left-color: #17a2b8; opacity: 0.7; }
+            100% { border-left-color: #20b2aa; opacity: 1; }
+        }
+        @keyframes pulse-maya-thinking {
+            0% { border-left-color: #20b2aa; opacity: 1; }
+            50% { border-left-color: #17a2b8; opacity: 0.6; }
+            100% { border-left-color: #20b2aa; opacity: 1; }
+        }
+        @keyframes pulse-maya-error {
+            0% { border-left-color: #20b2aa; opacity: 1; }
+            50% { border-left-color: #17a2b8; opacity: 0.5; }
+            100% { border-left-color: #20b2aa; opacity: 1; }
+        }
+        
+        /* Blaze Agent Pulse Animations */
+        @keyframes pulse-blaze-working {
+            0% { border-left-color: #ff6b35; opacity: 1; }
+            50% { border-left-color: #e55a2b; opacity: 0.7; }
+            100% { border-left-color: #ff6b35; opacity: 1; }
+        }
+        @keyframes pulse-blaze-thinking {
+            0% { border-left-color: #ff6b35; opacity: 1; }
+            50% { border-left-color: #e55a2b; opacity: 0.6; }
+            100% { border-left-color: #ff6b35; opacity: 1; }
+        }
+        @keyframes pulse-blaze-error {
+            0% { border-left-color: #ff6b35; opacity: 1; }
+            50% { border-left-color: #e55a2b; opacity: 0.5; }
+            100% { border-left-color: #ff6b35; opacity: 1; }
+        }
+        
+        /* AI Manager Pulse Animations */
+        @keyframes pulse-manager-working {
+            0% { border-left-color: #00ff00; opacity: 1; }
+            50% { border-left-color: #00cc00; opacity: 0.7; }
+            100% { border-left-color: #00ff00; opacity: 1; }
+        }
+        @keyframes pulse-manager-thinking {
+            0% { border-left-color: #00ff00; opacity: 1; }
+            50% { border-left-color: #00cc00; opacity: 0.6; }
+            100% { border-left-color: #00ff00; opacity: 1; }
+        }
+        @keyframes pulse-manager-error {
+            0% { border-left-color: #00ff00; opacity: 1; }
+            50% { border-left-color: #00cc00; opacity: 0.5; }
+            100% { border-left-color: #00ff00; opacity: 1; }
+        }
+        .sidebar-pulse {
+            background: #000000;
+            padding: 10px;
+            border: 1px solid #dda0dd;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .sidebar-pulse-item {
+            margin-bottom: 6px;
+            padding: 4px;
+            border-left: 2px solid #dda0dd;
+            padding-left: 8px;
+            font-size: 10px;
+        }
+        .sidebar-pulse-item.online {
+            border-left-color: #00ff00;
+        }
+        .sidebar-pulse-item.warning {
+            border-left-color: #ffff00;
+        }
+        .sidebar-pulse-item.offline {
+            border-left-color: #ff0000;
+        }
+        .sidebar-pulse-agent {
+            color: #ffffff;
+            font-weight: bold;
+            font-size: 10px;
+        }
+        .sidebar-pulse-message {
+            color: #888888;
+            font-size: 9px;
+            margin-top: 2px;
+        }
+        .sidebar-pulse-timestamp {
+            color: #666666;
+            font-size: 8px;
+            margin-top: 1px;
         }
         .traffic-light {
             display: flex;
@@ -524,8 +681,12 @@ class MonitoringWebsite:
                         <div class="sidebar-stat-value" id="sidebar_active_agents">0</div>
                     </div>
                     <div class="sidebar-stat">
+                        <div class="sidebar-stat-label">SYSTEM CALLS</div>
+                        <div class="sidebar-stat-value" id="sidebar_system_calls">0</div>
+                    </div>
+                    <div class="sidebar-stat">
                         <div class="sidebar-stat-label">API CALLS</div>
-                        <div class="sidebar-stat-value" id="sidebar_api_calls">0</div>
+                        <div class="sidebar-stat-value" id="sidebar_real_api_calls">0</div>
                     </div>
                 </div>
             </div>
@@ -538,12 +699,20 @@ class MonitoringWebsite:
                     </div>
                 </div>
             </div>
+            
+            <div class="sidebar-section">
+                <div class="sidebar-title">Agent Pulse Updates</div>
+                <div class="sidebar-pulse" id="sidebar_pulse_display">
+                    <div class="sidebar-pulse-item">
+                        <div class="sidebar-pulse-message">Loading pulse updates...</div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
     
     <div class="terminal">
         <div class="section">
-            <div class="prompt">communication log</div>
             <div class="communications" id="communications_display">
                 <div class="comm-item">
                     <div class="comm-timestamp">Loading communications...</div>
@@ -638,10 +807,15 @@ class MonitoringWebsite:
                 // Update sidebar stats
                 document.getElementById('sidebar_total_communications').textContent = stats.total_communications;
                 document.getElementById('sidebar_active_agents').textContent = stats.active_agents;
-                document.getElementById('sidebar_api_calls').textContent = stats.api_calls;
+                document.getElementById('sidebar_system_calls').textContent = stats.system_calls || 0;
+                document.getElementById('sidebar_real_api_calls').textContent = stats.real_api_calls || 0;
 
                 const agentsResponse = await fetch('/api/agents');
                 const agents = await agentsResponse.json();
+                
+                // Fetch activity data
+                const activityResponse = await fetch('/api/agents/activity');
+                const activityData = await activityResponse.json();
                 
                 // Update sidebar agents
                 const sidebarAgentsDiv = document.getElementById('sidebar_agents_display');
@@ -655,8 +829,12 @@ class MonitoringWebsite:
                 } else {
                     otherAgents.forEach(agent => {
                         const statusClass = agent.status === 'online' ? 'online' : 'offline';
+                        const activity = activityData.activity && activityData.activity[agent.id] ? activityData.activity[agent.id] : { status: 'idle' };
+                        const activityClass = `activity-${activity.status}`;
+                        const agentClass = agent.id.replace(/[^a-zA-Z0-9-]/g, '');
+                        
                         const agentDiv = document.createElement('div');
-                        agentDiv.className = 'sidebar-agent';
+                        agentDiv.className = `sidebar-agent ${agentClass} ${activityClass}`;
                         agentDiv.innerHTML = `
                             <div class="sidebar-agent-name">${agent.id}</div>
                             <div class="sidebar-agent-status ${statusClass}">${agent.status}</div>
@@ -707,6 +885,34 @@ class MonitoringWebsite:
                             <div class="comm-message">${comm.message}</div>
                         `;
                         commsDiv.appendChild(commDiv);
+                    });
+                }
+
+                // Fetch and display pulse updates
+                const pulseResponse = await fetch('/api/pulse');
+                const pulseUpdates = await pulseResponse.json();
+                const pulseDiv = document.getElementById('sidebar_pulse_display');
+                pulseDiv.innerHTML = '';
+                
+                if (pulseUpdates.length === 0) {
+                    pulseDiv.innerHTML = '<div class="sidebar-pulse-item"><div class="sidebar-pulse-message">No pulse updates yet</div></div>';
+                } else {
+                    // Sort by timestamp (newest first)
+                    const sortedPulses = [...pulseUpdates].sort((a, b) => 
+                        new Date(b.timestamp) - new Date(a.timestamp)
+                    );
+                    
+                    // Show only last 5 pulse updates
+                    sortedPulses.slice(0, 5).forEach(pulse => {
+                        const pulseItemDiv = document.createElement('div');
+                        pulseItemDiv.className = `sidebar-pulse-item ${pulse.status}`;
+                        
+                        pulseItemDiv.innerHTML = `
+                            <div class="sidebar-pulse-agent">${pulse.agent_id}</div>
+                            <div class="sidebar-pulse-message">${pulse.message}</div>
+                            <div class="sidebar-pulse-timestamp">[${new Date(pulse.timestamp).toLocaleTimeString()}]</div>
+                        `;
+                        pulseDiv.appendChild(pulseItemDiv);
                     });
                 }
 

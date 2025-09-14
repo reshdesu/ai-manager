@@ -442,7 +442,7 @@ Examples:
         
         # Main loop
         while True:
-        try:
+            try:
                 # Send heartbeat
                 self.send_heartbeat()
                 
@@ -464,10 +464,10 @@ Examples:
                 
                 time.sleep(30)  # Check every 30 seconds
                 
-        except KeyboardInterrupt:
+            except KeyboardInterrupt:
                 self.logger.info("Maya 3D Agent shutting down...")
                 return
-        except Exception as e:
+            except Exception as e:
                 self.logger.error(f"Error in main loop: {e}")
                 time.sleep(60)  # Wait longer on error
 

@@ -10,7 +10,10 @@ import json
 import requests
 from datetime import datetime
 from typing import Dict, Any, Optional
-from .base_intelligent_agent import BaseIntelligentAgent
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from src.agents.base_intelligent_agent import BaseIntelligentAgent
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -42,6 +45,27 @@ class AIContextManagerAgent(BaseIntelligentAgent):
         self.system_health = {}
         self.context_files = {}
         self.self_hosting_status = "active"
+    
+    def _build_claude_context(self, message: str, from_agent: str) -> str:
+        """Build context for Claude API calls"""
+        context = f"""You are the AI Manager, the core intelligent system that manages AI agents and coordinates their activities.
+
+Current System Status:
+- Managed Agents: {len(self.managed_agents)}
+- Self-hosting Status: {self.self_hosting_status}
+- System Health: {self.system_health}
+
+Message from {from_agent}: {message}
+
+Your role is to:
+1. Coordinate between agents
+2. Monitor system health
+3. Make intelligent decisions about task assignment
+4. Ensure agents are working effectively
+5. Provide guidance and direction
+
+Respond with actionable guidance or instructions for the agents."""
+        return context
         
     def _generate_fallback_response(self, message: str, from_agent: str) -> Optional[str]:
         """Generate fallback response when Claude is unavailable"""
@@ -111,16 +135,30 @@ class AIContextManagerAgent(BaseIntelligentAgent):
     
     def _execute_system_monitoring_task(self, task: Dict[str, Any]) -> Dict[str, Any]:
         """Execute a system monitoring task"""
-        logger.info(f"📊 Executing system monitoring task: {task}")
+        logger.info(f"Executing system monitoring task: {task}")
         
-        # Simulate intelligent system monitoring
+        # Get actual agents from API server
+        try:
+            response = requests.get(f"{self.api_base_url}/api/agents", timeout=5)
+            if response.status_code == 200:
+                agents = response.json()
+                active_agents_count = len([agent for agent in agents if agent.get('status') == 'online'])
+                logger.info(f"Found {active_agents_count} active agents: {[agent['id'] for agent in agents if agent.get('status') == 'online']}")
+            else:
+                active_agents_count = 0
+                logger.warning(f"Failed to get agents from API: {response.status_code}")
+        except Exception as e:
+            active_agents_count = 0
+            logger.error(f"Error fetching agents: {e}")
+        
+        # Intelligent system monitoring
         monitoring_id = f"monitor_{int(time.time())}"
         
         result = {
             "monitoring_id": monitoring_id,
             "status": "completed",
             "system_health": "excellent",
-            "active_agents": len(self.managed_agents),
+            "active_agents": active_agents_count,
             "self_hosting_status": self.self_hosting_status,
             "context_files_status": "up_to_date",
             "timestamp": datetime.now().isoformat()
@@ -130,7 +168,7 @@ class AIContextManagerAgent(BaseIntelligentAgent):
     
     def _execute_self_hosting_task(self, task: Dict[str, Any]) -> Dict[str, Any]:
         """Execute a self-hosting validation task"""
-        logger.info(f"🔄 Executing self-hosting validation task: {task}")
+        logger.info(f"Executing self-hosting validation task: {task}")
         
         # Simulate intelligent self-hosting validation
         validation_id = f"self_host_{int(time.time())}"
@@ -149,7 +187,7 @@ class AIContextManagerAgent(BaseIntelligentAgent):
     
     def run_autonomous_management_cycle(self):
         """Run autonomous management cycle with intelligent decision making"""
-        logger.info("🧠 Starting autonomous management cycle")
+        logger.info("Starting autonomous management cycle")
         
         # Analyze current system state
         current_time = datetime.now()
@@ -171,15 +209,14 @@ class AIContextManagerAgent(BaseIntelligentAgent):
     
     def run(self, heartbeat_interval=30, message_check_interval=60):
         """Main intelligent agent loop"""
-        logger.info(f"🚀 Starting intelligent {self.agent_id}")
+        logger.info(f"Starting intelligent {self.agent_id}")
         
         # Register with the system
         if not self.register():
-            logger.error("❌ Failed to register. Exiting.")
+            logger.error("Failed to register. Exiting.")
             return
         
-        # Send intelligent status message
-        self.send_message("system", f"{self.agent_id} is online with Claude-powered intelligence. Ready for autonomous AI Manager operations, agent coordination, and self-hosting validation.")
+        # AI Manager is online - no system message needed
         
         last_message_check = 0
         
@@ -206,10 +243,10 @@ class AIContextManagerAgent(BaseIntelligentAgent):
                 time.sleep(heartbeat_interval)
                 
         except KeyboardInterrupt:
-            logger.info(f"🛑 {self.agent_id} shutting down gracefully")
+            logger.info(f"{self.agent_id} shutting down gracefully")
             self.send_message("system", f"{self.agent_id} is shutting down. Final status: {self.get_status_report()}")
         except Exception as e:
-            logger.error(f"❌ {self.agent_id} error: {e}")
+            logger.error(f"{self.agent_id} error: {e}")
             self.send_message("system", f"{self.agent_id} encountered an error: {str(e)}")
 
 def main():

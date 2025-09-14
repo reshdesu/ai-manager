@@ -118,7 +118,7 @@ class SimpleBackendAPIService:
                 agents.append({
                     "id": agent_id,
                     "status": agent_data["status"],
-                    "last_seen": agent_data["last_seen"],
+                    "last_seen": agent_data.get("last_seen", "unknown"),
                     "capabilities": agent_data.get("capabilities", [])
                 })
             return jsonify(agents)
@@ -145,7 +145,16 @@ class SimpleBackendAPIService:
                 'capabilities': capabilities
             }
             
-            if self.db.register_agent(agent_data):
+            # Register in database if available
+            db_success = True
+            if self.db:
+                try:
+                    db_success = self.db.register_agent(agent_data)
+                except Exception as e:
+                    logger.warning(f"Database registration failed: {e}")
+                    db_success = True  # Continue without database
+            
+            if db_success:
                 # Update in-memory cache
                 self.registered_agents[agent_id] = {
                     "id": agent_id,
@@ -305,6 +314,60 @@ class SimpleBackendAPIService:
                 return jsonify({"status": "updated"})
             else:
                 return jsonify({"error": "Agent not found"}), 404
+        
+        @self.app.route('/api/agents/activity', methods=['GET'])
+        def get_agent_activity():
+            """Get agent activity status"""
+            self.system_stats["api_calls"] += 1
+            
+            activity_data = {}
+            for agent_id, agent_data in self.registered_agents.items():
+                activity_data[agent_id] = {
+                    "status": agent_data.get("activity_status", "idle"),
+                    "last_activity": agent_data.get("last_activity", agent_data.get("last_seen", "unknown"))
+                }
+            
+            return jsonify({"activity": activity_data})
+        
+        @self.app.route('/api/pulse', methods=['GET'])
+        def get_pulse_updates():
+            """Get pulse updates"""
+            self.system_stats["api_calls"] += 1
+            
+            # Return empty list for now - pulse updates will be added by agents
+            return jsonify([])
+        
+        @self.app.route('/api/pulse', methods=['POST'])
+        def add_pulse_update():
+            """Add a pulse update"""
+            self.system_stats["api_calls"] += 1
+            data = request.get_json()
+            
+            pulse_update = {
+                "id": str(uuid.uuid4()),
+                "timestamp": datetime.now().isoformat(),
+                "agent_id": data.get("agent_id", "unknown"),
+                "message": data.get("message", ""),
+                "status": data.get("status", "info")
+            }
+            
+            # For now, just log it - in a real implementation, this would be stored
+            logger.info(f"Pulse update from {pulse_update['agent_id']}: {pulse_update['message']}")
+            
+            return jsonify(pulse_update)
+        
+        @self.app.route('/api/communications/clear', methods=['DELETE'])
+        def clear_communications():
+            """Clear communication log"""
+            self.system_stats["api_calls"] += 1
+            
+            self.communication_log.clear()
+            self.system_stats["total_communications"] = 0
+            
+            logger.info("Communication log cleared")
+            
+            return jsonify({"status": "cleared"})
+        
     
     def cleanup_inactive_agents(self):
         """Mark agents as offline if they haven't sent heartbeat in 30 seconds"""

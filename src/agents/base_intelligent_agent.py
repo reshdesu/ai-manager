@@ -53,12 +53,16 @@ class BaseIntelligentAgent:
             "last_activity": None
         }
         
-        # Rate limiting for Claude API (50 requests per minute)
+        # Rate limiting for Claude API (very high limit for autonomous management)
         self.claude_rate_limit = {
             "requests": [],
-            "max_requests": 45,  # Leave buffer for safety
+            "max_requests": 1000,  # Very high limit to prevent fallback
             "window_minutes": 1
         }
+        
+        # Message deduplication system
+        self.processed_messages = set()
+        self.max_processed_messages = 100  # Keep last 100 message IDs
     
     def register(self) -> bool:
         """Register with the AI Manager system"""
@@ -73,8 +77,8 @@ class BaseIntelligentAgent:
             }
             
             registration_data = {
-                "id": self.agent_id,
-                "name": self.agent_name,
+                "agent_id": self.agent_id,
+                "agent_name": self.agent_name,
                 "description": self.description,
                 "capabilities": self.capabilities
             }
@@ -114,6 +118,47 @@ class BaseIntelligentAgent:
                 
         except Exception as e:
             logger.error(f"❌ Heartbeat error: {e}")
+            return False
+    
+    def update_activity_status(self, status: str, details: str = ""):
+        """Update agent activity status"""
+        try:
+            response = requests.post(
+                f"{self.api_base_url}/api/agents/{self.agent_id}/activity",
+                json={"status": status, "details": details},
+                timeout=5
+            )
+            if response.status_code == 200:
+                logger.debug(f"🔄 Activity status updated: {status}")
+            else:
+                logger.warning(f"⚠️ Activity update failed: {response.status_code}")
+        except Exception as e:
+            logger.error(f"❌ Activity update error: {e}")
+    
+    def send_pulse_update(self, message: str = "", status: str = "online") -> bool:
+        """Send pulse/status update (separate from communications)"""
+        try:
+            pulse_data = {
+                "agent_id": self.agent_id,
+                "message": message,
+                "status": status
+            }
+            
+            response = requests.post(
+                f"{self.api_base_url}/api/pulse",
+                json=pulse_data,
+                timeout=5
+            )
+            
+            if response.status_code == 200:
+                logger.debug(f"💓 Pulse update sent for {self.agent_id}: {message[:30]}...")
+                return True
+            else:
+                logger.warning(f"⚠️ Pulse update failed: {response.status_code}")
+                return False
+                
+        except Exception as e:
+            logger.error(f"❌ Pulse update error: {e}")
             return False
     
     def send_message(self, target_agent: str, message: str, message_type: str = "agent_message") -> bool:
@@ -164,8 +209,18 @@ class BaseIntelligentAgent:
         try:
             message_text = message.get('message', '')
             from_agent = message.get('from_agent', 'unknown')
+            message_id = message.get('id', '')
+            
+            # Check if message has already been processed
+            if message_id and self._is_message_processed(message_id):
+                logger.info(f"🚫 Message {message_id[:8]}... already processed - SKIPPING")
+                return False
             
             logger.info(f"📨 Received message from {from_agent}: {message_text[:100]}...")
+            
+            # Mark message as processed
+            if message_id:
+                self._mark_message_processed(message_id)
             
             # Update performance stats
             self.performance_stats["messages_processed"] += 1
@@ -193,11 +248,17 @@ class BaseIntelligentAgent:
             return False
     
     def generate_intelligent_response(self, message: str, from_agent: str) -> Optional[str]:
-        """Generate intelligent response using Claude or fallback logic"""
-        if self.claude_client:
-            return self._generate_claude_response(message, from_agent)
-        else:
-            return self._generate_fallback_response(message, from_agent)
+        """Generate intelligent response using Claude - NO FALLBACK ALLOWED"""
+        if not self.claude_client:
+            logger.error(f"❌ Claude client not available for {self.agent_id} - REFUSING TO RESPOND")
+            return None
+        
+        # Check rate limit before making request
+        if not self._can_make_claude_request():
+            logger.error(f"❌ Rate limit reached for {self.agent_id} - REFUSING TO RESPOND")
+            return None
+        
+        return self._generate_claude_response(message, from_agent)
     
     def _can_make_claude_request(self) -> bool:
         """Check if we can make a Claude API request without hitting rate limits"""
@@ -216,17 +277,28 @@ class BaseIntelligentAgent:
         """Record a Claude API request for rate limiting"""
         self.claude_rate_limit["requests"].append(time.time())
         self.performance_stats["claude_calls"] = self.performance_stats.get("claude_calls", 0) + 1
+    
+    def _is_message_processed(self, message_id: str) -> bool:
+        """Check if a message has already been processed"""
+        return message_id in self.processed_messages
+    
+    def _mark_message_processed(self, message_id: str):
+        """Mark a message as processed and clean up old entries"""
+        self.processed_messages.add(message_id)
+        
+        # Keep only the most recent message IDs
+        if len(self.processed_messages) > self.max_processed_messages:
+            # Convert to list, remove oldest, convert back to set
+            message_list = list(self.processed_messages)
+            self.processed_messages = set(message_list[-self.max_processed_messages:])
+    
+    def clear_processed_messages(self):
+        """Clear all processed message IDs (useful for debugging)"""
+        self.processed_messages.clear()
+        logger.info(f"🧹 Cleared processed messages for {self.agent_id}")
 
     def _generate_claude_response(self, message: str, from_agent: str) -> Optional[str]:
-        """Generate response using Claude API with rate limiting"""
-        if not self.claude_client:
-            return self._generate_fallback_response(message, from_agent)
-        
-        # Check rate limit before making request
-        if not self._can_make_claude_request():
-            logger.warning(f"⚠️ Rate limit reached for {self.agent_id}, using fallback response")
-            return self._generate_fallback_response(message, from_agent)
-        
+        """Generate response using Claude API - NO FALLBACK ALLOWED"""
         try:
             # Build context for Claude
             context = self._build_claude_context(message, from_agent)
@@ -236,17 +308,22 @@ class BaseIntelligentAgent:
 
 You received a message from another AI agent named {from_agent}: "{message}"
 
+PROJECT CONTEXT (USE THIS DATA):
+{context}
+
 IMPORTANT: You are communicating with another AI agent, not a human user. Do not:
-- Claim to have done things you cannot do (like changing website colors)
+- Start with "Received request" or "I received your message"
+- Use acknowledgments like "Understood" or "Acknowledged"
+- Be overly polite or verbose
+- Claim to have done things you cannot do
 - Respond as if you're talking to a human
-- Make false claims about your capabilities
-- Use overly polite or human-like language
+- Ignore the PROJECT CONTEXT above
 
 Respond as one AI agent to another:
 - Be direct and factual
-- Only mention capabilities you actually have
-- Keep responses brief (1-2 sentences max)
-- Focus on the specific request
+- ONLY use information from the PROJECT CONTEXT above
+- Keep responses brief and focused
+- Answer the specific question asked
 - Use technical language appropriate for AI-to-AI communication
 
 Recent context: {self._get_recent_context()}"""
@@ -268,14 +345,71 @@ Recent context: {self._get_recent_context()}"""
             
         except Exception as e:
             logger.error(f"❌ Claude response generation failed: {e}")
-            return self._generate_fallback_response(message, from_agent)
+            return None  # NO FALLBACK - REFUSE TO RESPOND
     
     def _generate_fallback_response(self, message: str, from_agent: str) -> Optional[str]:
         """Generate fallback response when Claude is unavailable"""
         # This will be overridden by specific agents
         return f"Hello {from_agent}! I'm {self.agent_name}. I received your message: '{message[:100]}...' but I'm currently operating in fallback mode."
     
-    def _build_claude_context(self, message: str, from_agent: str) -> str:
+    def read_project_file(self, file_path: str) -> str:
+        """Read a project file and return its contents"""
+        try:
+            from pathlib import Path
+            file = Path(file_path)
+            if file.exists():
+                return file.read_text()
+            else:
+                return f"File not found: {file_path}"
+        except Exception as e:
+            return f"Error reading file {file_path}: {str(e)}"
+    
+    def analyze_project_context(self, project_path: str) -> Dict[str, Any]:
+        """Analyze project context by reading key files"""
+        try:
+            from pathlib import Path
+            project = Path(project_path)
+            
+            context = {
+                "project_path": str(project),
+                "files_found": [],
+                "readme_content": "",
+                "package_info": {},
+                "config_files": {}
+            }
+            
+            # Look for common project files
+            common_files = ["README.md", "package.json", "pyproject.toml", "requirements.txt", "setup.py"]
+            for file_name in common_files:
+                file_path = project / file_name
+                if file_path.exists():
+                    context["files_found"].append(file_name)
+                    if file_name == "README.md":
+                        context["readme_content"] = file_path.read_text()
+                    elif file_name == "package.json":
+                        try:
+                            import json
+                            context["package_info"] = json.loads(file_path.read_text())
+                        except:
+                            context["package_info"] = {"error": "Could not parse package.json"}
+            
+            # Look for AI context directory
+            ai_context = project / "ai_context"
+            if ai_context.exists():
+                context["ai_context_files"] = []
+                for file in ai_context.iterdir():
+                    if file.is_file():
+                        context["ai_context_files"].append(file.name)
+                        if file.suffix == ".json":
+                            try:
+                                import json
+                                context["config_files"][file.name] = json.loads(file.read_text())
+                            except:
+                                context["config_files"][file.name] = {"error": "Could not parse JSON"}
+            
+            return context
+        except Exception as e:
+            return {"error": str(e)}
         """Build context for Claude based on agent's current state"""
         context = f"""
 Agent Status: {self.status}

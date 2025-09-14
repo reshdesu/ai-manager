@@ -1,0 +1,143 @@
+{
+  "management_protocols": {
+    "daily_operations": {
+      "status_reports": {
+        "frequency": "daily",
+        "format": "structured",
+        "required_fields": [
+          "project_status",
+          "completed_tasks",
+          "current_work",
+          "blockers",
+          "next_priorities",
+          "technical_metrics"
+        ]
+      },
+      "task_management": {
+        "assignment_method": "ai_manager_coordinated",
+        "priority_levels": ["critical", "high", "medium", "low"],
+        "tracking_method": "real_time_updates"
+      }
+    },
+    "technical_standards": {
+      "code_reviews": {
+        "frequency": "per_feature",
+        "reviewer": "ai_manager",
+        "criteria": [
+          "code_quality",
+          "architecture_compliance",
+          "performance_optimization",
+          "security_best_practices"
+        ]
+      },
+      "testing_protocols": {
+        "unit_tests": "required",
+        "integration_tests": "required",
+        "performance_tests": "required_for_critical_features",
+        "automated_testing": "enabled"
+      }
+    },
+    "communication_rules": {
+      "reporting_format": {
+        "timestamp": "ISO_8601",
+        "agent_id": "required",
+        "project_context": "required",
+        "technical_details": "structured"
+      },
+      "escalation_protocols": {
+        "critical_issues": "immediate_notification",
+        "technical_blockers": "within_2_hours",
+        "feature_completion": "end_of_day"
+      }
+    },
+    "resource_coordination": {
+      "knowledge_sharing": {
+        "best_practices": "cross_project",
+        "technical_solutions": "shared_repository",
+        "common_patterns": "documented"
+      },
+      "dependency_management": {
+        "shared_libraries": "coordinated_updates",
+        "api_integrations": "version_alignment",
+        "deployment_schedules": "synchronized"
+      }
+    }
+  },
+  "project_specific_rules": {
+    "maya_3d_game": {
+      "focus_areas": [
+        "3d_rendering_performance",
+        "physics_simulation",
+        "user_experience",
+        "cross_browser_compatibility"
+      ],
+      "technical_priorities": [
+        "three_js_optimization",
+        "react_performance",
+        "typescript_type_safety",
+        "vite_build_optimization"
+      ],
+      "quality_metrics": [
+        "fps_performance",
+        "memory_usage",
+        "load_time",
+        "user_interaction_responsiveness"
+      ]
+    },
+    "blackblaze_backup": {
+      "focus_areas": [
+        "gui_usability",
+        "backup_reliability",
+        "cloud_integration",
+        "cross_platform_support"
+      ],
+      "technical_priorities": [
+        "pyside6_ui_performance",
+        "aws_s3_integration",
+        "backup_verification",
+        "error_handling"
+      ],
+      "quality_metrics": [
+        "backup_success_rate",
+        "ui_responsiveness",
+        "memory_efficiency",
+        "error_recovery"
+      ]
+    }
+  },
+  "help_systems": {
+    "technical_support": {
+      "ai_manager_assistance": "available_24_7",
+      "code_review_guidance": "on_demand",
+      "architecture_consultation": "scheduled",
+      "debugging_support": "immediate"
+    },
+    "project_guidance": {
+      "feature_planning": "collaborative",
+      "technical_decisions": "ai_manager_approved",
+      "resource_allocation": "optimized",
+      "timeline_management": "adaptive"
+    },
+    "learning_resources": {
+      "best_practices": "documented",
+      "technical_patterns": "shared",
+      "troubleshooting_guides": "maintained",
+      "performance_optimization": "case_studies"
+    }
+  },
+  "enforcement_mechanisms": {
+    "compliance_monitoring": {
+      "automated_checks": "continuous",
+      "quality_gates": "enforced",
+      "performance_monitoring": "real_time",
+      "security_scans": "scheduled"
+    },
+    "feedback_loops": {
+      "daily_reviews": "mandatory",
+      "weekly_assessments": "comprehensive",
+      "monthly_retrospectives": "improvement_focused",
+      "quarterly_planning": "strategic"
+    }
+  }
+}
+

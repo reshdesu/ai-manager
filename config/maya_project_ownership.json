@@ -1,0 +1,55 @@
+{
+  "project_assignments": {
+    "maya_3d_life_simulation_game": {
+      "project_name": "Maya 3D Life Simulation Game",
+      "project_path": "/home/yamnik/Projects/maya/",
+      "owner_agent": "maya-agent",
+      "owner_name": "Maya",
+      "project_type": "3D Life Simulation Game",
+      "inspiration": ["Sims 4", "InZOI"],
+      "technology_stack": {
+        "frontend": "React + TypeScript",
+        "3d_rendering": "Three.js",
+        "build_tool": "Vite",
+        "package_manager": "pnpm"
+      },
+      "current_status": "In Development",
+      "completed_features": [
+        "Character Creator UI",
+        "Character Panel",
+        "Game Controls",
+        "Main UI System",
+        "TypeScript Type Definitions",
+        "Three.js Setup"
+      ],
+      "next_priorities": [
+        "Character needs system",
+        "Relationship mechanics",
+        "Career progression",
+        "Home building system",
+        "AI-driven NPCs",
+        "Day/night cycle"
+      ],
+      "assignment_date": "2025-09-14",
+      "last_updated": "2025-09-14"
+    }
+  },
+  "agent_responsibilities": {
+    "maya-agent": {
+      "primary_projects": ["maya_3d_life_simulation_game"],
+      "role": "Primary Developer and Owner",
+      "capabilities": [
+        "autonomous_development",
+        "command_execution",
+        "file_management",
+        "claude_integration",
+        "three_js_development",
+        "react_development",
+        "typescript_development",
+        "vite_build_management",
+        "web_3d_rendering",
+        "physics_simulation"
+      ]
+    }
+  }
+}
