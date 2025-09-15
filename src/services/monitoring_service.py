@@ -236,6 +236,9 @@ class MonitoringWebsite:
         .comm-item.maya-agent {
             border-left-color: #20b2aa;
         }
+        .comm-item.jugad-agent {
+            border-left-color: #8a2be2;
+        }
         .comm-item.unknown-agent {
             border-left-color: #888888;
         }
@@ -472,6 +475,12 @@ class MonitoringWebsite:
         .sidebar-agent-status.warning {
             color: #ffff00;
         }
+        .sidebar-agent-model {
+            color: #888888;
+            font-size: 9px;
+            font-style: italic;
+            margin-top: 2px;
+        }
         
         /* Agent Activity Indicators - Pulsing Left Border with Agent Colors */
         .sidebar-agent.activity-idle { 
@@ -490,6 +499,20 @@ class MonitoringWebsite:
         .sidebar-agent.maya-agent.activity-error { 
             border-left: 4px solid #20b2aa !important; 
             animation: pulse-maya-error 1s infinite; 
+        }
+        
+        /* Jugad Agent Colors (Purple) */
+        .sidebar-agent.jugad-agent.activity-working { 
+            border-left: 4px solid #8a2be2 !important; 
+            animation: pulse-jugad-working 2s infinite; 
+        }
+        .sidebar-agent.jugad-agent.activity-thinking { 
+            border-left: 4px solid #8a2be2 !important; 
+            animation: pulse-jugad-thinking 1.5s infinite; 
+        }
+        .sidebar-agent.jugad-agent.activity-error { 
+            border-left: 4px solid #8a2be2 !important; 
+            animation: pulse-jugad-error 1s infinite; 
         }
         
         /* Blaze Agent Colors (Orange) */
@@ -535,6 +558,23 @@ class MonitoringWebsite:
             0% { border-left-color: #20b2aa; opacity: 1; }
             50% { border-left-color: #17a2b8; opacity: 0.5; }
             100% { border-left-color: #20b2aa; opacity: 1; }
+        }
+        
+        /* Jugad Agent Pulse Animations */
+        @keyframes pulse-jugad-working {
+            0% { border-left-color: #8a2be2; opacity: 1; }
+            50% { border-left-color: #7b68ee; opacity: 0.7; }
+            100% { border-left-color: #8a2be2; opacity: 1; }
+        }
+        @keyframes pulse-jugad-thinking {
+            0% { border-left-color: #8a2be2; opacity: 1; }
+            50% { border-left-color: #7b68ee; opacity: 0.6; }
+            100% { border-left-color: #8a2be2; opacity: 1; }
+        }
+        @keyframes pulse-jugad-error {
+            0% { border-left-color: #8a2be2; opacity: 1; }
+            50% { border-left-color: #7b68ee; opacity: 0.5; }
+            100% { border-left-color: #8a2be2; opacity: 1; }
         }
         
         /* Blaze Agent Pulse Animations */
@@ -835,9 +875,16 @@ class MonitoringWebsite:
                         
                         const agentDiv = document.createElement('div');
                         agentDiv.className = `sidebar-agent ${agentClass} ${activityClass}`;
+                        const modelInfo = agent.model_info ? 
+                            `${agent.model_info.provider} - ${agent.model_info.model}` : 
+                            'Unknown Model';
+                        const modelStatus = agent.model_info ? 
+                            `(${agent.model_info.status})` : 
+                            '';
                         agentDiv.innerHTML = `
                             <div class="sidebar-agent-name">${agent.id}</div>
                             <div class="sidebar-agent-status ${statusClass}">${agent.status}</div>
+                            <div class="sidebar-agent-model">${modelInfo} ${modelStatus}</div>
                         `;
                         sidebarAgentsDiv.appendChild(agentDiv);
                     });
@@ -869,6 +916,7 @@ class MonitoringWebsite:
                                 case 'ai-manager': return '#00ff00';
                                 case 'blaze-agent': return '#ff6b35';
                                 case 'maya-agent': return '#20b2aa';
+                                case 'jugad-agent': return '#8a2be2';
                                 default: return '#888888';
                             }
                         };

@@ -1,0 +1,19 @@
+{
+  "project_name": "Jugad Project",
+  "project_path": "/home/yamnik/Projects/jugad/",
+  "owner_agent_id": "jugad-agent",
+  "description": "A general purpose instruction-following agent for various tasks and projects. Jugad can be instructed to work on different types of tasks including development, research, file management, and automation.",
+  "status": "assigned",
+  "capabilities": [
+    "general_development",
+    "file_management", 
+    "command_execution",
+    "project_setup",
+    "code_generation",
+    "task_automation",
+    "research_and_analysis",
+    "documentation",
+    "claude_integration"
+  ],
+  "last_updated": "2025-09-14T15:57:00.000Z"
+}

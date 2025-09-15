@@ -16,6 +16,29 @@ from typing import Dict, List, Optional
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 
+# Claude API testing
+import anthropic
+
+# Load API key from bashrc at startup
+def load_api_key_from_bashrc():
+    """Load ANTHROPIC_API_KEY from bashrc if not in environment"""
+    if not os.environ.get('ANTHROPIC_API_KEY'):
+        try:
+            import subprocess
+            result = subprocess.run(['bash', '-c', 'source ~/.bashrc && echo $ANTHROPIC_API_KEY'], 
+                                  capture_output=True, text=True, timeout=5)
+            if result.returncode == 0 and result.stdout.strip():
+                api_key = result.stdout.strip()
+                os.environ['ANTHROPIC_API_KEY'] = api_key
+                print(f"✅ API key loaded from bashrc: {api_key[:20]}...")
+                return True
+        except Exception as e:
+            print(f"❌ Failed to load API key from bashrc: {e}")
+    return False
+
+# Load API key at startup
+load_api_key_from_bashrc()
+
 # Database
 try:
     from .database import SupabaseDatabaseManager
@@ -46,6 +69,10 @@ class SimpleBackendAPIService:
         self.communication_log = []
         self._load_from_database()
         
+        # Cache for live model info to avoid excessive API calls
+        self.model_info_cache = {}
+        self.model_info_cache_timeout = 30  # seconds
+        
         if self.db:
             self.system_stats = self.db.get_system_stats()
         else:
@@ -53,6 +80,154 @@ class SimpleBackendAPIService:
         
         self._setup_routes()
         logger.info("Simple Backend REST API Service initialized")
+    
+    def _get_live_model_info(self, agent_id: str) -> dict:
+        """Get live model info by testing Claude API access and fetching available models"""
+        # Check cache first
+        cache_key = f"{agent_id}_model_info"
+        if cache_key in self.model_info_cache:
+            cached_data, timestamp = self.model_info_cache[cache_key]
+            if time.time() - timestamp < self.model_info_cache_timeout:
+                return cached_data
+        
+        # Test Claude API access - load from bashrc if not in environment
+        anthropic_api_key = os.environ.get('ANTHROPIC_API_KEY')
+        if not anthropic_api_key:
+            # Try to load from bashrc
+            try:
+                import subprocess
+                result = subprocess.run(['bash', '-c', 'source ~/.bashrc && echo $ANTHROPIC_API_KEY'], 
+                                      capture_output=True, text=True, timeout=5)
+                if result.returncode == 0 and result.stdout.strip():
+                    anthropic_api_key = result.stdout.strip()
+                    os.environ['ANTHROPIC_API_KEY'] = anthropic_api_key
+            except Exception as e:
+                logger.debug(f"Failed to load API key from bashrc: {e}")
+        
+        if not anthropic_api_key:
+            model_info = {
+                "provider": "DISABLED",
+                "model": "NO_API_KEY",
+                "status": "refuses_to_respond",
+                "api_key_present": False,
+                "intelligence_level": "disabled",
+                "last_checked": datetime.now().isoformat()
+            }
+        else:
+            try:
+                # Test Claude API and get available models
+                client = anthropic.Anthropic(api_key=anthropic_api_key)
+                
+                # Test with a simple request
+                response = client.messages.create(
+                    model="claude-3-haiku-20240307",
+                    max_tokens=10,
+                    messages=[{"role": "user", "content": "test"}]
+                )
+                
+                # Get available models and select the best one
+                try:
+                    import requests
+                    models_response = requests.get(
+                        "https://api.anthropic.com/v1/models",
+                        headers={
+                            "x-api-key": anthropic_api_key, 
+                            "anthropic-version": "2023-06-01",
+                            "Content-Type": "application/json"
+                        },
+                        timeout=10
+                    )
+                    
+                    if models_response.status_code == 200:
+                        available_models = models_response.json()
+                        models_data = available_models.get("data", [])
+                        
+                        # Sort models by creation date (newest first)
+                        sorted_models = sorted(models_data, key=lambda x: x.get("created_at", ""), reverse=True)
+                        
+                        # Select the best available model
+                        selected_model = self._select_best_model(sorted_models)
+                        model_list = [model.get("id", "unknown") for model in sorted_models]
+                        
+                        logger.info(f"Selected model: {selected_model['display_name']} ({selected_model['id']})")
+                    else:
+                        # Fallback to known working model
+                        selected_model = {
+                            "id": "claude-3-haiku-20240307",
+                            "display_name": "Claude Haiku 3",
+                            "created_at": "2024-03-07T00:00:00Z"
+                        }
+                        model_list = ["claude-3-haiku-20240307"]
+                        
+                except Exception as e:
+                    logger.warning(f"Failed to fetch model list: {e}")
+                    # Fallback to known working model
+                    selected_model = {
+                        "id": "claude-3-haiku-20240307", 
+                        "display_name": "Claude Haiku 3",
+                        "created_at": "2024-03-07T00:00:00Z"
+                    }
+                    model_list = ["claude-3-haiku-20240307"]
+                
+                model_info = {
+                    "provider": "Anthropic",
+                    "model": selected_model["id"],
+                    "display_name": selected_model["display_name"],
+                    "status": "active",
+                    "api_key_present": True,
+                    "intelligence_level": "claude_powered",
+                    "last_checked": datetime.now().isoformat(),
+                    "api_test": "success",
+                    "available_models": model_list,
+                    "model_count": len(model_list),
+                    "selected_model": selected_model,
+                    "model_selection_strategy": "latest_first_with_fallback"
+                }
+                
+            except Exception as e:
+                model_info = {
+                    "provider": "ERROR",
+                    "model": "API_FAILED",
+                    "status": "api_error",
+                    "api_key_present": bool(anthropic_api_key),
+                    "intelligence_level": "error",
+                    "last_checked": datetime.now().isoformat(),
+                    "error": str(e)[:100]
+                }
+        
+        # Cache the result
+        self.model_info_cache[cache_key] = (model_info, time.time())
+        return model_info
+    
+    def _select_best_model(self, sorted_models: list) -> dict:
+        """Select the best available model with fallback strategy"""
+        if not sorted_models:
+            return {
+                "id": "claude-3-haiku-20240307",
+                "display_name": "Claude Haiku 3", 
+                "created_at": "2024-03-07T00:00:00Z"
+            }
+        
+        # Model preference order (newest to oldest)
+        preferred_models = [
+            "claude-opus-4-1-20250805",  # Claude Opus 4.1 (Latest)
+            "claude-opus-4-20250514",     # Claude Opus 4
+            "claude-sonnet-4-20250514",   # Claude Sonnet 4
+            "claude-3-7-sonnet-20250219", # Claude Sonnet 3.7
+            "claude-3-5-haiku-20241022",  # Claude Haiku 3.5
+            "claude-3-haiku-20240307"     # Claude Haiku 3 (Fallback)
+        ]
+        
+        # Try to find preferred models in order
+        for preferred_id in preferred_models:
+            for model in sorted_models:
+                if model.get("id") == preferred_id:
+                    logger.info(f"Selected preferred model: {model['display_name']}")
+                    return model
+        
+        # If no preferred model found, use the newest available
+        logger.info(f"Using newest available model: {sorted_models[0]['display_name']}")
+        return sorted_models[0]
     
     def _load_from_database(self):
         """Load existing data from database"""
@@ -111,17 +286,69 @@ class SimpleBackendAPIService:
         
         @self.app.route('/api/agents', methods=['GET'])
         def get_agents():
-            """Get list of registered agents"""
+            """Get list of registered agents with live model info"""
             self.system_stats["api_calls"] += 1
             agents = []
             for agent_id, agent_data in self.registered_agents.items():
+                # Get live model info by checking Claude API availability
+                model_info = self._get_live_model_info(agent_id)
+                
                 agents.append({
                     "id": agent_id,
+                    "name": agent_data.get("name", agent_id),
                     "status": agent_data["status"],
                     "last_seen": agent_data.get("last_seen", "unknown"),
-                    "capabilities": agent_data.get("capabilities", [])
+                    "capabilities": agent_data.get("capabilities", []),
+                    "model_info": model_info
                 })
             return jsonify(agents)
+        
+        @self.app.route('/api/models', methods=['GET'])
+        def get_available_models():
+            """Get list of available Claude models from Anthropic API"""
+            self.system_stats["api_calls"] += 1
+            
+            anthropic_api_key = os.environ.get('ANTHROPIC_API_KEY')
+            if not anthropic_api_key:
+                return jsonify({
+                    "error": "No API key available",
+                    "models": [],
+                    "status": "disabled"
+                }), 503
+            
+            try:
+                import requests
+                models_response = requests.get(
+                    "https://api.anthropic.com/v1/models",
+                    headers={
+                        "x-api-key": anthropic_api_key,
+                        "anthropic-version": "2023-06-01",
+                        "Content-Type": "application/json"
+                    },
+                    timeout=10
+                )
+                
+                if models_response.status_code == 200:
+                    available_models = models_response.json()
+                    return jsonify({
+                        "status": "success",
+                        "models": available_models.get("data", []),
+                        "count": len(available_models.get("data", [])),
+                        "last_checked": datetime.now().isoformat()
+                    })
+                else:
+                    return jsonify({
+                        "error": f"API request failed: {models_response.status_code}",
+                        "models": [],
+                        "status": "error"
+                    }), 503
+                    
+            except Exception as e:
+                return jsonify({
+                    "error": str(e),
+                    "models": [],
+                    "status": "error"
+                }), 503
         
         @self.app.route('/api/agents/register', methods=['POST'])
         def register_agent():
@@ -133,6 +360,7 @@ class SimpleBackendAPIService:
             agent_name = data.get('agent_name', agent_id)
             description = data.get('description', '')
             capabilities = data.get('capabilities', [])
+            model_info = data.get('model_info', {})
             
             if not agent_id:
                 return jsonify({"error": "agent_id required"}), 400
@@ -142,7 +370,8 @@ class SimpleBackendAPIService:
                 'id': agent_id,
                 'name': agent_name,
                 'description': description,
-                'capabilities': capabilities
+                'capabilities': capabilities,
+                'model_info': model_info
             }
             
             # Register in database if available
@@ -163,7 +392,8 @@ class SimpleBackendAPIService:
                     "status": "online",
                     "last_heartbeat": datetime.now().isoformat(),
                     "capabilities": capabilities,
-                    "registered_at": datetime.now().isoformat()
+                    "registered_at": datetime.now().isoformat(),
+                    "model_info": model_info
                 }
             
             # Count active agents excluding the core AI Manager
@@ -199,6 +429,10 @@ class SimpleBackendAPIService:
             
             if not target_agent or not message:
                 return jsonify({"error": "target_agent and message required"}), 400
+            
+            # PREVENT AGENTS FROM SENDING MESSAGES TO THEMSELVES
+            if agent_id == target_agent:
+                return jsonify({"error": "Agents cannot send messages to themselves"}), 400
             
             # Log the communication
             communication = {
@@ -256,6 +490,10 @@ class SimpleBackendAPIService:
             
             if not agent_id or not message:
                 return jsonify({"error": "agent_id and message required"}), 400
+            
+            # PREVENT AGENTS FROM SENDING MESSAGES TO THEMSELVES
+            if target_agent and agent_id == target_agent:
+                return jsonify({"error": "Agents cannot send messages to themselves"}), 400
             
             # Create communication entry
             communication = {

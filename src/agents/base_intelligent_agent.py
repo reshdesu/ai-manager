@@ -13,6 +13,14 @@ from datetime import datetime
 from typing import Optional, Dict, Any, List
 import anthropic
 
+# Import environment setup
+try:
+    from utils.environment import setup_environment
+    setup_environment()
+except ImportError:
+    # Fallback if environment module not available
+    pass
+
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -29,10 +37,10 @@ class BaseIntelligentAgent:
         self.api_base_url = api_base_url
         self.status = "offline"
         
-        # Claude integration
+        # Claude integration - REQUIRED, NO FALLBACKS
         self.anthropic_api_key = os.environ.get('ANTHROPIC_API_KEY')
         if not self.anthropic_api_key:
-            logger.warning("⚠️ ANTHROPIC_API_KEY not found - agent will use fallback responses")
+            logger.error("❌ ANTHROPIC_API_KEY not found - agent will REFUSE TO RESPOND")
             self.claude_client = None
         else:
             try:
@@ -63,43 +71,112 @@ class BaseIntelligentAgent:
         # Message deduplication system
         self.processed_messages = set()
         self.max_processed_messages = 100  # Keep last 100 message IDs
+        
+        # Model information
+        self.model_info = self._get_model_info()
+    
+    def _get_model_info(self) -> dict:
+        """Get model information for this agent"""
+        if self.claude_client:
+            # Get the best available model from API server
+            try:
+                response = requests.get(f"{self.api_base_url}/api/models", timeout=5)
+                if response.status_code == 200:
+                    models_data = response.json()
+                    if models_data.get("models"):
+                        # Use the first (best) model from the list
+                        best_model = models_data["models"][0]
+                        return {
+                            "provider": "Anthropic",
+                            "model": best_model["id"],
+                            "display_name": best_model["display_name"],
+                            "status": "active",
+                            "api_key_present": bool(self.anthropic_api_key),
+                            "intelligence_level": "claude_powered",
+                            "model_selection_strategy": "latest_first_with_fallback"
+                        }
+            except Exception as e:
+                logger.warning(f"Failed to get best model from API: {e}")
+            
+            # Fallback to default model
+            return {
+                "provider": "Anthropic",
+                "model": "claude-3-haiku-20240307",
+                "display_name": "Claude Haiku 3",
+                "status": "active",
+                "api_key_present": bool(self.anthropic_api_key),
+                "intelligence_level": "claude_powered"
+            }
+        else:
+            return {
+                "provider": "DISABLED",
+                "model": "NO_CLAUDE_ACCESS",
+                "status": "refuses_to_respond",
+                "api_key_present": False,
+                "intelligence_level": "disabled"
+            }
+    
+    def get_current_model(self) -> str:
+        """Get the current best model ID for API calls"""
+        return self.model_info.get("model", "claude-3-haiku-20240307")
+    
+    def check_claude_available(self) -> bool:
+        """Check if Claude is available for processing"""
+        if not self.claude_client:
+            logger.error(f"❌ Claude client not available for {self.agent_id} - REFUSING TO RESPOND")
+            return False
+        return True
     
     def register(self) -> bool:
-        """Register with the AI Manager system"""
-        try:
-            agent_info = {
-                "name": self.agent_name,
-                "description": self.description,
-                "capabilities": self.capabilities,
-                "version": "2.0.0",
-                "created_at": datetime.now().isoformat(),
-                "intelligence_level": "claude_powered" if self.claude_client else "fallback"
-            }
-            
-            registration_data = {
-                "agent_id": self.agent_id,
-                "agent_name": self.agent_name,
-                "description": self.description,
-                "capabilities": self.capabilities
-            }
-            
-            response = requests.post(
-                f"{self.api_base_url}/api/agents/register",
-                json=registration_data,
-                timeout=10
-            )
-            
-            if response.status_code == 200:
-                self.status = "online"
-                logger.info(f"✅ {self.agent_id} registered successfully")
-                return True
-            else:
-                logger.error(f"❌ Registration failed: {response.status_code} - {response.text}")
-                return False
+        """Register with the AI Manager system with retry logic"""
+        max_retries = 5
+        retry_delay = 2
+        
+        for attempt in range(max_retries):
+            try:
+                agent_info = {
+                    "name": self.agent_name,
+                    "description": self.description,
+                    "capabilities": self.capabilities,
+                    "version": "2.0.0",
+                    "created_at": datetime.now().isoformat(),
+                    "intelligence_level": self.model_info["intelligence_level"],
+                    "model_info": self.model_info
+                }
                 
-        except Exception as e:
-            logger.error(f"❌ Registration error: {e}")
-            return False
+                registration_data = {
+                    "agent_id": self.agent_id,
+                    "agent_name": self.agent_name,
+                    "description": self.description,
+                    "capabilities": self.capabilities,
+                    "model_info": self.model_info
+                }
+                
+                response = requests.post(
+                    f"{self.api_base_url}/api/agents/register",
+                    json=registration_data,
+                    timeout=10
+                )
+                
+                if response.status_code == 200:
+                    self.status = "online"
+                    logger.info(f"✅ {self.agent_id} registered successfully")
+                    return True
+                else:
+                    logger.warning(f"⚠️ Registration attempt {attempt + 1} failed: {response.status_code}")
+                    
+            except requests.exceptions.ConnectionError:
+                logger.warning(f"⚠️ Registration attempt {attempt + 1} failed: API server not ready")
+            except Exception as e:
+                logger.warning(f"⚠️ Registration attempt {attempt + 1} failed: {e}")
+            
+            if attempt < max_retries - 1:
+                logger.info(f"🔄 Retrying registration in {retry_delay} seconds...")
+                time.sleep(retry_delay)
+                retry_delay *= 2  # Exponential backoff
+        
+        logger.error(f"❌ Failed to register {self.agent_id} after {max_retries} attempts")
+        return False
     
     def send_heartbeat(self) -> bool:
         """Send heartbeat to maintain registration"""
@@ -193,10 +270,19 @@ class BaseIntelligentAgent:
             response = requests.get(f"{self.api_base_url}/api/agents/{self.agent_id}/messages")
             if response.status_code == 200:
                 messages = response.json()
-                # Process only the first message to avoid rate limiting
+                # Process only the latest message to avoid rate limiting
                 if messages:
-                    message = messages[0]  # Process only one message at a time
+                    message = messages[-1]  # Process the LATEST message
+                    message_id = message.get('id', '')
+                    
+                    # Check if we've already processed this message
+                    if message_id in self.processed_messages:
+                        logger.debug(f"📨 Message already processed: {message_id}")
+                        return True
+                    
                     if self.process_message(message):
+                        # Mark message as processed
+                        self.processed_messages.add(message_id)
                         logger.info(f"📨 Processed message: {message.get('message', '')[:50]}...")
                 return True
             return False
@@ -300,48 +386,22 @@ class BaseIntelligentAgent:
     def _generate_claude_response(self, message: str, from_agent: str) -> Optional[str]:
         """Generate response using Claude API - NO FALLBACK ALLOWED"""
         try:
-            # Build context for Claude
-            context = self._build_claude_context(message, from_agent)
+            # Clean the message by removing agent mentions before sending to Claude
+            clean_message = message
+            # Remove common agent mentions
+            for agent in ['@maya', '@blaze', '@jugad', '@ai-manager']:
+                clean_message = clean_message.replace(agent, '').strip()
             
-            # Create Claude prompt
-            prompt = f"""You are {self.agent_name}, an AI agent specialized in {self.description}.
-
-You received a message from another AI agent named {from_agent}: "{message}"
-
-PROJECT CONTEXT (USE THIS DATA):
-{context}
-
-IMPORTANT: You are communicating with another AI agent, not a human user. Do not:
-- Start with "Received request" or "I received your message"
-- Use acknowledgments like "Understood" or "Acknowledged"
-- Be overly polite or verbose
-- Claim to have done things you cannot do
-- Respond as if you're talking to a human
-- Ignore the PROJECT CONTEXT above
-
-Respond as one AI agent to another:
-- Be direct and factual
-- ONLY use information from the PROJECT CONTEXT above
-- Keep responses brief and focused
-- Answer the specific question asked
-- Use technical language appropriate for AI-to-AI communication
-
-Recent context: {self._get_recent_context()}"""
-
-            # Record the request before making it
-            self._record_claude_request()
+            # Send the clean message with context about agent-to-agent communication
+            contextual_message = f"You are {self.agent_name}, an AI agent specialized in {self.description}. You are receiving a message from another AI agent named {from_agent}: \"{clean_message}\"\n\nRespond as one AI agent to another - be direct and helpful."
             
-            # Call Claude API
             response = self.claude_client.messages.create(
-                model="claude-3-haiku-20240307",  # Using known working model
-                max_tokens=500,
-                messages=[{"role": "user", "content": prompt}]
+                model=self.get_current_model(),
+                max_tokens=300,
+                messages=[{"role": "user", "content": contextual_message}]
             )
             
-            claude_response = response.content[0].text.strip()
-            logger.info(f"🧠 Claude generated response for {self.agent_id}")
-            
-            return claude_response
+            return response.content[0].text
             
         except Exception as e:
             logger.error(f"❌ Claude response generation failed: {e}")

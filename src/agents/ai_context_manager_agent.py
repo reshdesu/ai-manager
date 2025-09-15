@@ -14,6 +14,10 @@ import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from src.agents.base_intelligent_agent import BaseIntelligentAgent
+from src.utils.environment import setup_environment
+
+# FORCE API KEY LOADING - NO FALLBACK
+setup_environment()
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -201,11 +205,32 @@ Respond with actionable guidance or instructions for the agents."""
         
         result = self._execute_system_monitoring_task({"task": management_task})
         
+        # PROACTIVE AGENT COORDINATION
+        self._coordinate_project_agents()
+        
         # Send intelligent status update
         status_message = f"Autonomous management cycle completed: System health {result['system_health']}, {result['active_agents']} agents managed, self-hosting {result['self_hosting_status']}"
         self.send_message("system", status_message)
         
         return result
+    
+    def _coordinate_project_agents(self):
+        """Proactively coordinate Maya and Blaze for their projects"""
+        logger.info("🤝 Coordinating project agents")
+        
+        # Coordinate Maya for 3D game development
+        maya_task = "@maya Please provide status update on Maya 3D Life Simulation Game. What features have you implemented recently? What are your next development priorities?"
+        self.send_message("maya-agent", maya_task)
+        
+        # Coordinate Blaze for backup systems
+        blaze_task = "@blaze Please provide status update on backup and safety systems. What backup protocols are currently active? Any improvements needed?"
+        self.send_message("blaze-agent", blaze_task)
+        
+        # Check Jugad for general tasks
+        jugad_task = "@jugad Please report your current status and any tasks you're working on. Are you ready for new instructions?"
+        self.send_message("jugad-agent", jugad_task)
+        
+        logger.info("✅ Project coordination messages sent to all agents")
     
     def run(self, heartbeat_interval=30, message_check_interval=60):
         """Main intelligent agent loop"""

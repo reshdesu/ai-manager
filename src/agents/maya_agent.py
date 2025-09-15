@@ -16,6 +16,10 @@ import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from src.agents.base_intelligent_agent import BaseIntelligentAgent
+from src.utils.environment import setup_environment
+
+# FORCE API KEY LOADING - NO FALLBACK
+setup_environment()
 
 class MayaAgent(BaseIntelligentAgent):
     def __init__(self):
@@ -342,52 +346,41 @@ CRITICAL: This is a web-based 3D life simulation game using Three.js and React, 
             if message_id:
                 self._mark_message_processed(message_id)
             
-            # DIRECT ACTION MODE - No Claude analysis, just direct keyword matching
-            if '@maya' in message_text.lower():
+            # DIRECT ACTION MODE - Respond to @maya mentions OR direct messages from ai-manager
+            if '@maya' in message_text.lower() or from_agent == 'ai-manager':
                 
-                # Check for development server commands
-                if any(keyword in message_text.lower() for keyword in ['pnpm run dev', 'npm run dev', 'start', 'run', 'dev server']):
-                    self.logger.info("🚀 DEVELOPMENT SERVER REQUEST - starting server")
-                    result = self.start_development_server()
-                    
-                    if result.get("success"):
-                        response = f"✅ Development server started! {result.get('message', '')}"
-                    else:
-                        response = f"❌ Failed to start server: {result.get('error', 'Unknown error')}"
-                    
-                    self.send_message(from_agent, response)
-                    return True
-                
-                # Check for install commands
-                if any(keyword in message_text.lower() for keyword in ['pnpm install', 'npm install', 'install dependencies']):
-                    self.logger.info("📦 INSTALL DEPENDENCIES REQUEST - installing")
-                    result = self.install_dependencies()
-                    
-                    if result.get("success"):
-                        response = f"✅ Dependencies installed! {result.get('message', '')}"
-                    else:
-                        response = f"❌ Failed to install dependencies: {result.get('error', 'Unknown error')}"
-                    
-                    self.send_message(from_agent, response)
-                    return True
-                
-                # Check for character creation (only if file doesn't exist)
-                if any(keyword in message_text.lower() for keyword in ['charactercreator', 'character creator', 'create character']):
-                    if not (self.project_path / "src/ui/CharacterCreator.tsx").exists():
-                        self.logger.info("🎯 CHARACTER CREATION REQUEST - implementing")
-                        result = self.implement_character_creator()
+                # Use Claude to understand and respond to the message naturally
+                if self.claude_client:
+                    try:
+                        # Clean the message by removing agent mentions before sending to Claude
+                        clean_message = message_text
+                        # Remove common agent mentions
+                        for agent in ['@maya', '@blaze', '@jugad', '@ai-manager']:
+                            clean_message = clean_message.replace(agent, '').strip()
                         
-                        if result.get("success"):
-                            response = f"✅ CharacterCreator.tsx created! {result.get('file_created')}"
-                        else:
-                            response = f"❌ Failed to create CharacterCreator: {result.get('error', 'Unknown error')}"
+                        # Send the clean message with context about agent-to-agent communication
+                        contextual_message = f"You are Maya, an AI agent specialized in 3D game development. You are receiving a message from another AI agent named {from_agent}: \"{clean_message}\"\n\nRespond as one AI agent to another - be direct and helpful."
                         
-                        self.send_message(from_agent, response)
+                        response = self.claude_client.messages.create(
+                            model=self.get_current_model(),
+                            max_tokens=300,
+                            messages=[{"role": "user", "content": contextual_message}]
+                        )
+                        
+                        claude_response = response.content[0].text
+                        self.logger.info(f"🧠 Claude response: {claude_response}")
+                        
+                        self.send_message(from_agent, claude_response)
                         return True
-                    else:
-                        self.logger.info("📁 CharacterCreator.tsx already exists - skipping")
-                        self.send_message(from_agent, "✅ CharacterCreator.tsx already exists!")
-                return True
+                        
+                    except Exception as e:
+                        self.logger.error(f"❌ Claude error: {e}")
+                        self.send_message(from_agent, f"❌ Error processing message: {str(e)}")
+                        return True
+                else:
+                    self.logger.error("❌ Claude client not available")
+                    self.send_message(from_agent, "❌ Claude client not available")
+                    return True
             
             # For non-@maya messages, ignore completely
             self.logger.info("🚫 Message not for me - IGNORING")
@@ -442,7 +435,7 @@ Examples:
         
         # Main loop
         while True:
-        try:
+            try:
                 # Send heartbeat
                 self.send_heartbeat()
                 
@@ -464,10 +457,10 @@ Examples:
                 
                 time.sleep(30)  # Check every 30 seconds
                 
-        except KeyboardInterrupt:
+            except KeyboardInterrupt:
                 self.logger.info("Maya 3D Agent shutting down...")
                 return
-        except Exception as e:
+            except Exception as e:
                 self.logger.error(f"Error in main loop: {e}")
                 time.sleep(60)  # Wait longer on error
 
